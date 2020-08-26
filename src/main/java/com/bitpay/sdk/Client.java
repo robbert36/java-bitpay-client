@@ -54,7 +54,8 @@ import java.util.*;
 
 public class Client {
 
-    private static BitPayLogger _log = new BitPayLogger(BitPayLogger.OFF);
+    private static BitPayLogger _log = new BitPayLogger(BitPayLogger.INFO);
+    private Env serverEnvironment;
     private Config _configuration;
     private String _env;
     private Hashtable<String, String> _tokenCache; // {facade, token}
@@ -78,9 +79,10 @@ public class Client {
      * @param proxy       HttpHost Optional Proxy setting (set to NULL to ignore)
      * @throws BitPayException BitPayException class
      */
-    public Client(String environment, String privateKey, Env.Tokens tokens, HttpHost proxy) throws BitPayException {
+    public Client(Env serverEnvironment, String environment, String privateKey, Env.Tokens tokens, HttpHost proxy) throws BitPayException {
         try {
             this._env = environment;
+            this.serverEnvironment = serverEnvironment;
             this.BuildConfig(privateKey, tokens);
             this.initKeys();
             this.init(proxy);
@@ -100,8 +102,9 @@ public class Client {
      * @param proxy          HttpHost Optional Proxy setting (set to NULL to ignore)
      * @throws BitPayException BitPayException class
      */
-    public Client(String configFilePath, HttpHost proxy) throws BitPayException {
+    public Client(Env serverEnvironment, String configFilePath, HttpHost proxy) throws BitPayException {
         try {
+            this.serverEnvironment = serverEnvironment;
             this._configFilePath = configFilePath;
             this.GetConfig();
             this.initKeys();
@@ -154,6 +157,10 @@ public class Client {
         }
     }
 
+    public String requestClientAuthorization(String facade) throws BitPayException {
+        return requestClientAuthorization(facade, null);
+    }
+
     /**
      * Request a pairing code from the BitPay server.
      *
@@ -161,12 +168,13 @@ public class Client {
      * @return A pairing code for claim at https://bitpay.com/dashboard/merchant/api-tokens.
      * @throws BitPayException BitPayException class
      */
-    public String requestClientAuthorization(String facade) throws BitPayException {
+    public String requestClientAuthorization(String facade, String label) throws BitPayException {
         Token token = new Token();
         token.setId(_identity);
         token.setGuid(this.getGuid());
         token.setFacade(facade);
         token.setCount(1);
+        token.setLabel(label);
 
         ObjectMapper mapper = new ObjectMapper();
 
@@ -1092,7 +1100,7 @@ public class Client {
      */
     private void init(HttpHost proxyDetails) throws BitPayException {
         try {
-            this._baseUrl = this._env.equals(Env.Test) ? Env.TestUrl : Env.ProdUrl;
+            this._baseUrl = this._env.equals(serverEnvironment.Test) ? serverEnvironment.getTestUrl() : serverEnvironment.getProdUrl();
             if (proxyDetails != null) {
                 _httpClient = HttpClientBuilder.create().setProxy(proxyDetails).build();
             } else {
@@ -1226,10 +1234,10 @@ public class Client {
                 get.addHeader("x-signature", KeyUtils.sign(_ecKey, fullURL));
                 get.addHeader("x-identity", KeyUtils.bytesToHex(_ecKey.getPubKey()));
             }
-            get.addHeader("X-BitPay-Plugin-Info", Env.BitpayPluginInfo);
-            get.addHeader("x-accept-version", Env.BitpayApiVersion);
-            get.addHeader("x-bitpay-api-frame", Env.BitpayApiFrame);
-            get.addHeader("x-bitpay-api-frame-version", Env.BitpayApiFrameVersion);
+            get.addHeader("X-BitPay-Plugin-Info", serverEnvironment.getBitpayPluginInfo());
+            get.addHeader("x-accept-version", serverEnvironment.getBitpayApiVersion());
+            get.addHeader("x-bitpay-api-frame", serverEnvironment.BitpayApiFrame);
+            get.addHeader("x-bitpay-api-frame-version", serverEnvironment.BitpayApiFrameVersion);
 
 
             _log.info(get.toString());
@@ -1260,10 +1268,10 @@ public class Client {
 
                 delete.setURI(new URI(fullURL));
 
-                delete.addHeader("X-BitPay-Plugin-Info", Env.BitpayPluginInfo);
-                delete.addHeader("x-accept-version", Env.BitpayApiVersion);
-                delete.addHeader("x-bitpay-api-frame", Env.BitpayApiFrame);
-                delete.addHeader("x-bitpay-api-frame-version", Env.BitpayApiFrameVersion);
+                delete.addHeader("X-BitPay-Plugin-Info", serverEnvironment.getBitpayPluginInfo());
+                delete.addHeader("x-accept-version", serverEnvironment.getBitpayApiVersion());
+                delete.addHeader("x-bitpay-api-frame", serverEnvironment.BitpayApiFrame);
+                delete.addHeader("x-bitpay-api-frame-version", serverEnvironment.BitpayApiFrameVersion);
                 delete.addHeader("x-signature", KeyUtils.sign(_ecKey, fullURL));
                 delete.addHeader("x-identity", KeyUtils.bytesToHex(_ecKey.getPubKey()));
             }
@@ -1295,10 +1303,10 @@ public class Client {
                 post.addHeader("x-identity", KeyUtils.bytesToHex(_ecKey.getPubKey()));
             }
 
-            post.addHeader("x-accept-version", Env.BitpayApiVersion);
-            post.addHeader("x-bitpay-api-frame", Env.BitpayApiFrame);
-            post.addHeader("x-bitpay-api-frame-version", Env.BitpayApiFrameVersion);
-            post.addHeader("X-BitPay-Plugin-Info", Env.BitpayPluginInfo);
+            post.addHeader("x-accept-version", serverEnvironment.getBitpayApiVersion());
+            post.addHeader("x-bitpay-api-frame", serverEnvironment.BitpayApiFrame);
+            post.addHeader("x-bitpay-api-frame-version", serverEnvironment.BitpayApiFrameVersion);
+            post.addHeader("X-BitPay-Plugin-Info", serverEnvironment.getBitpayPluginInfo());
             post.addHeader("Content-Type", "application/json");
 
             _log.info(post.toString());
@@ -1321,11 +1329,11 @@ public class Client {
 
             put.addHeader("x-signature", KeyUtils.sign(_ecKey, _baseUrl + uri + json));
             put.addHeader("x-identity", KeyUtils.bytesToHex(_ecKey.getPubKey()));
-            put.addHeader("x-accept-version", Env.BitpayApiVersion);
-            put.addHeader("X-BitPay-Plugin-Info", Env.BitpayPluginInfo);
+            put.addHeader("x-accept-version", serverEnvironment.getBitpayApiVersion());
+            put.addHeader("X-BitPay-Plugin-Info", serverEnvironment.getBitpayPluginInfo());
             put.addHeader("Content-Type", "application/json");
-            put.addHeader("x-bitpay-api-frame", Env.BitpayApiFrame);
-            put.addHeader("x-bitpay-api-frame-version", Env.BitpayApiFrameVersion);
+            put.addHeader("x-bitpay-api-frame", serverEnvironment.BitpayApiFrame);
+            put.addHeader("x-bitpay-api-frame-version", serverEnvironment.BitpayApiFrameVersion);
 
             _log.info(put.toString());
             return _httpClient.execute(put);
@@ -1508,5 +1516,9 @@ public class Client {
      */
     public void setLoggerLevel(int loggerLevel) {
         _log = new BitPayLogger(loggerLevel);
+    }
+
+    public Env getServerEnvironment() {
+        return serverEnvironment;
     }
 }

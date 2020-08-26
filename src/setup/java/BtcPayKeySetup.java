@@ -15,12 +15,13 @@ import java.util.HashMap;
 import java.util.Scanner;
 import java.util.concurrent.atomic.AtomicReference;
 
-class BitPaySetup {
+class BtcPayKeySetup {
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
-        String opt, env, privateKeyPath = "", privateKeyAsHex = "", pairingCodeMerchant, pairingCodePayroll, privateKey = "";
+        String opt, env, privateKeyPath = "", privateKeyAsHex = "", pairingCodePos = "", privateKey = "";
         int keyType; // 1 = in file, 2 = as text
         Client bitpay;
+        Env btcPayEnv = new Env("https://btcpay.vante.me:444/", "https://btcpay.vante.me:444/");
 
         do {
             System.out.println("Select target environment:");
@@ -29,9 +30,9 @@ class BitPaySetup {
         } while (opt.toLowerCase().equals("t") && opt.toLowerCase().equals("p"));
 
         if (opt.toLowerCase().equals("t")) {
-            env = Env.Test;
+            env = btcPayEnv.Test;
         } else {
-            env = Env.Prod;
+            env = btcPayEnv.Prod;
         }
 
         do {
@@ -55,7 +56,7 @@ class BitPaySetup {
             }
 
             if (keyType == 1) {
-                privateKeyPath = Paths.get(".").toAbsolutePath().normalize().toString() + "/output/bitpay_private_" + env.toLowerCase() + ".key";
+                privateKeyPath = Paths.get(".").toAbsolutePath().normalize().toString() + "/output/btcpay_private_" + env.toLowerCase() + ".key";
                 if (!KeyUtils.privateKeyExists(privateKeyPath)) {
                     ECKey _ecKey = KeyUtils.createEcKey();
                     KeyUtils.saveEcKey(_ecKey);
@@ -79,16 +80,16 @@ class BitPaySetup {
         }
 
         System.out.println("Generating config file... ");
+        System.out.println("Assign label to btcPayClient: ");
+        String label = scanner.next();
         try {
             ObjectMapper mapper = new ObjectMapper();
 
-            bitpay = new Client(new Env(), env, privateKey, new Env.Tokens(), null);
-            pairingCodeMerchant = bitpay.requestClientAuthorization(Facade.Merchant);
-            pairingCodePayroll = bitpay.requestClientAuthorization(Facade.Payroll);
+            bitpay = new Client(btcPayEnv, env, privateKey, new Env.Tokens(), null);
+            pairingCodePos = bitpay.requestClientAuthorization(Facade.Merchant, label);
 
             HashMap<String, String> tokens = new HashMap<>();
             tokens.put("merchant", bitpay.getAccessToken(Facade.Merchant));
-            tokens.put("payroll", bitpay.getAccessToken(Facade.Payroll));
             AtomicReference<JsonNode> ApiTokens = new AtomicReference<>(mapper.valueToTree(tokens));
 
             ObjectNode envConfig = mapper.createObjectNode();
@@ -108,17 +109,16 @@ class BitPaySetup {
             String jsonString = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(configurationFile);
 
             ObjectWriter writer = mapper.writer(new DefaultPrettyPrinter());
-            writer.writeValue(new File(Paths.get(".").toAbsolutePath().normalize().toString() + "/output/BitPay.config.json"), configurationFile);
+            writer.writeValue(new File(Paths.get(".").toAbsolutePath().normalize().toString() + "/output/BtcPay.config.json"), configurationFile);
 
             System.out.println("In location:");
             System.out.println(Paths.get(".").toAbsolutePath().normalize().toString() + "/output/BitPay.config.json");
             System.out.println("With the following information:");
             System.out.println(jsonString);
             System.out.println();
-            System.out.println("To complete your setup, Go to " + bitpay.getServerEnvironment().getTestUrl() + "dashboard/merchant/api-tokens and pair this client with your merchant account using the pairing codes:");
+            System.out.println("To complete your setup, Go to " + btcPayEnv.getTestUrl() + "api-access-request?pairingCode=" + pairingCodePos);
             System.out.println();
-            System.out.println(pairingCodeMerchant + " for the Merchant facade.");
-            System.out.println(pairingCodePayroll + " for the Payroll facade ONLY if you have requested access for this role.");
+            System.out.println(pairingCodePos + " for the PointOfSale facade.");
         } catch (Exception e) {
             System.out.println(e.getMessage());
             System.exit(0);

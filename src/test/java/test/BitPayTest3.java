@@ -34,7 +34,7 @@ public class BitPayTest3 {
         boolean dumpOut = false;
 
 //        Client bitpay = new Client("BitPay.config.json");
-        Client bitpay = new Client(
+        Client bitpay = new Client( new Env(),
                 Env.Test,
                 "bitpay_private_test.key",
                 new Env.Tokens() {{
@@ -63,7 +63,7 @@ public class BitPayTest3 {
             pairingCode = bitpay.requestClientAuthorization(Facade.Payroll);
 
             // Signal the device operator that this client needs to be paired with a merchant account.
-            _log.info("Client is requesting PAYROLL facade access. Go to " + Env.TestUrl + " and pair this client with your merchant account using the pairing code: " + pairingCode);
+            _log.info("Client is requesting PAYROLL facade access. Go to " + bitpay.getServerEnvironment().getTestUrl() + " and pair this client with your merchant account using the pairing code: " + pairingCode);
             dumpOut = true;
             //we already failed to authorize for a PAYROLL token, therefore we must sleep a bit to try to authorize for any other facade (rate limiter on the api side)
             Thread.sleep(10000);
@@ -78,7 +78,7 @@ public class BitPayTest3 {
     public void setUp() throws BitPayException, IOException, URISyntaxException {
         //ensure the second argument (api url) is the same as the one used in setUpOneTime()
 //        bitpay = new Client("BitPay.config.json");
-        bitpay = new Client(
+        bitpay = new Client( new Env(),
                 Env.Test,
                 "bitpay_private_test.key",
                 new Env.Tokens() {{

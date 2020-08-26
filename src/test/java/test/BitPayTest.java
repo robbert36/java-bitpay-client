@@ -48,7 +48,7 @@ public class BitPayTest {
     public void setUp() throws BitPayException, IOException, URISyntaxException {
         //ensure the second argument (api url) is the same as the one used in setUpOneTime()
 //        bitpay = new Client("BitPay.config.json", null);
-        bitpay = new Client(
+        bitpay = new Client( new Env(),
                 Env.Test,
                 "/Users/antonio.buedo/Bitpay/Repos/java-bitpay-client/output/bitpay_private_test.key",
                 new Env.Tokens() {{

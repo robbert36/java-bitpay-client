@@ -25,7 +25,7 @@ public class BitPayTest2 {
     @BeforeClass
     public static void setUpOneTime() throws UnknownHostException, BitPayException {
 //        Client bitpay = new Client("BitPay.config.json", null);
-        Client bitpay = new Client(
+        Client bitpay = new Client( new Env(),
                 Env.Test,
                 "bitpay_private_test.key",
                 new Env.Tokens() {{
@@ -44,7 +44,7 @@ public class BitPayTest2 {
             String pairingCode = bitpay.requestClientAuthorization(Facade.PointOfSale);
 
             // Signal the device operator that this client needs to be paired with a merchant account.
-            _log.info("Client is requesting POS facade access. Go to " + Env.TestUrl + " and pair this client with your merchant account using the pairing code: " + pairingCode);
+            _log.info("Client is requesting POS facade access. Go to " + bitpay.getServerEnvironment().getTestUrl() + " and pair this client with your merchant account using the pairing code: " + pairingCode);
             throw new BitPayException("Error: client is not authorized.");
         }
         bitpay.setLoggerLevel(BitPayLogger.DEBUG);
@@ -54,7 +54,7 @@ public class BitPayTest2 {
     public void setUp() throws BitPayException {
         //ensure the second argument (api url) is the same as the one used in setUpOneTime()
 //        bitpay = new Client("BitPay.config.json", null);
-        bitpay = new Client(
+        bitpay = new Client( new Env(),
                 Env.Test,
                 "bitpay_private_test.key",
                 new Env.Tokens() {{
